@@ -7,7 +7,12 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test:unit && npm run test:api",
+    "test:unit": "cross-env NODE_ENV=test jest tests/unit",
+    "test:api": "cross-env NODE_ENV=test mocha tests/api/**/*.test.js",
+    "test:e2e": "cross-env NODE_ENV=test playwright test",
+    "test:coverage": "cross-env NODE_ENV=test jest --coverage",
+    "test:all": "npm run test:unit && npm run test:api && npm run test:e2e"
   },
   "repository": {
     "type": "git",
@@ -19,5 +24,16 @@
   "bugs": {
     "url": "https://github.com/Silence91169/SD-Capstone/issues"
   },
-  "homepage": "https://github.com/Silence91169/SD-Capstone#readme"
+  "homepage": "https://github.com/Silence91169/SD-Capstone#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "chai": "^4.5.0",
+    "cross-env": "^10.1.0",
+    "jest": "^30.3.0",
+    "mocha": "^11.7.5",
+    "mongodb-memory-server": "^11.0.1",
+    "nodemon": "^3.1.14",
+    "playwright": "^1.59.1",
+    "supertest": "^7.2.2"
+  }
 }

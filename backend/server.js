@@ -1,46 +1,25 @@
-const express = require("express");
-const cors = require("cors");
 const dotenv = require("dotenv");
 const path = require("path");
 
 dotenv.config({ path: path.join(__dirname, ".env") });
 
 const connectDB = require("./config/db");
-const authRoutes = require("./routes/authRoutes");
-const userRoutes = require("./routes/userRoutes");
-const recordRoutes = require("./routes/recordRoutes");
-const appointmentRoutes = require("./routes/appointmentRoutes");
-const documentShareRoutes = require("./routes/documentShareRoutes");
-const emergencyRoutes = require("./routes/emergencyRoutes");
-const publicEmergencyRoutes = require("./routes/publicEmergencyRoutes");
-const analyticsRoutes = require("./routes/analyticsRoutes");
+const app = require("./app");
 
-const app = express();
+const PORT = Number(process.env.PORT || 3001);
 
-// Middleware
-app.use(cors("*"));
-app.use(express.json());
-// Connect DB
-connectDB();
+const startServer = async () => {
+  await connectDB();
+  return app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+};
 
-// Test Route
-app.get("/", (req, res) => {
-    res.send("MediVault API Running");
-});
+if (require.main === module) {
+  startServer();
+}
 
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/user", userRoutes);
-app.use("/api/records", recordRoutes);
-app.use("/api/appointments", appointmentRoutes);
-app.use("/api/documents", documentShareRoutes);
-app.use("/api/emergency", emergencyRoutes);
-app.use("/api/public", publicEmergencyRoutes);
-app.use("/api/analytics", analyticsRoutes);
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-const PORT = 3001;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+module.exports = {
+  app,
+  startServer,
+};

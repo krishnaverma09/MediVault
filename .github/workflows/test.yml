@@ -1,0 +1,42 @@
+name: MediVault Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: npm --prefix backend ci
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run API tests
+        run: npm run test:api
+
+      - name: Run E2E tests
+        run: npm run test:e2e

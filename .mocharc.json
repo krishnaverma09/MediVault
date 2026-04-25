@@ -1,0 +1,11 @@
+{
+  "recursive": true,
+  "timeout": 10000,
+  "exit": true,
+  "spec": [
+    "tests/api/**/*.test.js"
+  ],
+  "require": [
+    "tests/api/setup.js"
+  ]
+}
