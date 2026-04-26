@@ -34,7 +34,8 @@ test.describe("MediVault E2E", () => {
 
     await expect(page).toHaveURL(/\/dashboard$/);
     await dashboardPage.expectLoaded("Patient Zero");
-    await expect(page.getByText("My Medical Records")).toBeVisible();
+    await expect(page.getByText("Recent records")).toBeVisible();
+    await expect(page.getByText("baseline-report.pdf")).toBeVisible();
   });
 
   test("Upload medical report", async ({ page }) => {
@@ -45,6 +46,7 @@ test.describe("MediVault E2E", () => {
     await dashboardPage.openUploadDocument();
 
     await expect(page).toHaveURL(/\/documents\/upload$/);
+    await expect(page.getByText("Upload & Share Document")).toBeVisible();
     await page.setInputFiles("#fileInputDocs", {
       name: "report.pdf",
       mimeType: "application/pdf",
@@ -53,7 +55,10 @@ test.describe("MediVault E2E", () => {
 
     await page.getByPlaceholder("e.g. Blood Test Report").fill("Annual Blood Test");
     await page.locator("select[multiple]").selectOption("doctor-e2e-1");
-    await page.getByRole("button", { name: "Upload & Share" }).click();
+    await Promise.all([
+      page.waitForURL(/\/documents$/, { waitUntil: "domcontentloaded" }),
+      page.getByRole("button", { name: /^Upload & Share$/ }).click(),
+    ]);
 
     await expect(page).toHaveURL(/\/documents$/);
     await expect(page.getByText("Mock Uploaded Document")).toBeVisible();
@@ -67,7 +72,9 @@ test.describe("MediVault E2E", () => {
     await dashboardPage.openEmergencyAccess();
 
     await expect(page).toHaveURL(/\/emergency-access$/);
+    await expect(page.getByRole("button", { name: "Enable Access" })).toBeVisible();
     await page.getByRole("button", { name: "Enable Access" }).click();
+    await expect(page.getByRole("button", { name: "Disable Access" })).toBeVisible();
     await page.getByPlaceholder("e.g. John Doe").fill("Patient Zero");
     await page.getByRole("button", { name: "Save Emergency Profile" }).click();
 
