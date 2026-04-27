@@ -1,6 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const dotenv = require("dotenv");
+
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -12,6 +15,13 @@ const publicEmergencyRoutes = require("./routes/publicEmergencyRoutes");
 const analyticsRoutes = require("./routes/analyticsRoutes");
 
 const app = express();
+const connectDB = require("./config/db");
+
+if (process.env.NODE_ENV !== "test") {
+  (async () => {
+    await connectDB();
+  })();
+}
 
 // Core middleware
 app.use(cors());
