@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ShareModal from '../components/ShareModal';
 import AppShell from '../components/AppShell';
 import type { User, MedicalDocument, ShareDocument } from '../types';
-import { API_URL } from '../config/api';
+import { API_URL, apiFetch } from '../config/api';
 
 export default function Documents() {
+  const [shareDoc, setShareDoc] = useState<MedicalDocument | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [myDocs, setMyDocs] = useState<MedicalDocument[]>([]);
   const [sharedDocs, setSharedDocs] = useState<ShareDocument[]>([]);
@@ -17,7 +19,7 @@ export default function Documents() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const profileRes = await fetch(`${API_URL}/api/user/profile`, {
+      const profileRes = await apiFetch(`${API_URL}/api/user/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const profileData = await profileRes.json().catch(() => ({}));
@@ -26,13 +28,13 @@ export default function Documents() {
       setUser(userData);
 
       if (userData.role === 'doctor') {
-        const docsRes = await fetch(`${API_URL}/api/documents/doctor/shared-documents`, {
+        const docsRes = await apiFetch(`${API_URL}/api/documents/doctor/shared-documents`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const docsData = await docsRes.json().catch(() => ({}));
         if (docsRes.ok) setSharedDocs(docsData.data || []);
       } else {
-        const myRes = await fetch(`${API_URL}/api/documents/patient/my-documents`, {
+        const myRes = await apiFetch(`${API_URL}/api/documents/patient/my-documents`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const myData = await myRes.json().catch(() => ({}));
@@ -58,26 +60,30 @@ export default function Documents() {
     fetchData();
   }, [token, navigate, fetchData]);
 
-  const viewDoctorDoc = async (shareId: string, fileUrl: string) => {
+  const viewDoctorDoc = async (shareId: string, download = false) => {
     try {
-      await fetch(`${API_URL}/api/documents/doctor/view/${shareId}`, {
+      const response = await apiFetch(`${API_URL}/api/documents/doctor/view/${shareId}${download ? "?download=true" : ""}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      window.open(fileUrl, '_blank', 'noopener,noreferrer');
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Access denied');
+      window.open(result.data.fileUrl, '_blank', 'noopener,noreferrer');
     } catch (err) {
       console.error(err);
       alert('Failed to log access or open document.');
     }
   };
 
-  const downloadDoc = async (shareId: string, fileUrl: string) => {
-    await viewDoctorDoc(shareId, fileUrl);
+  const downloadDoc = async (shareId: string) => {
+    await viewDoctorDoc(shareId, true);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('medivault_token');
     navigate('/login');
   };
+
+  if (error && !user) return <div className="error-banner" role="alert">{error} <a href="/login">Return to login</a></div>;
 
   if (loading || !user) return <div className="loading-screen">Loading Documents…</div>;
 
@@ -113,6 +119,7 @@ export default function Documents() {
                         {doc.description && <span>{doc.description}</span>}
                         <span>Uploaded {new Date(doc.createdAt).toLocaleString()}</span>
                       </div>
+                      <button className="btn-link" onClick={() => setShareDoc(doc)}>Share / Manage access</button>
                       <a
                         href={doc.fileUrl}
                         target="_blank"
@@ -161,14 +168,14 @@ export default function Documents() {
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignSelf: 'center' }}>
                       <button
                         className="btn-link"
-                        onClick={() => viewDoctorDoc(share.shareId, share.document?.fileUrl)}
+                        onClick={() => viewDoctorDoc(share.shareId)}
                       >
                         View
                       </button>
                       {(share.permission === 'DOWNLOAD' || share.permission === 'FULL_ACCESS') && (
                         <button
                           className="btn-sm btn-success"
-                          onClick={() => downloadDoc(share.shareId, share.document?.fileUrl)}
+                          onClick={() => downloadDoc(share.shareId)}
                         >
                           Download
                         </button>
@@ -180,6 +187,7 @@ export default function Documents() {
             )}
           </div>
         )}
+      {shareDoc && <ShareModal record={{ ...shareDoc, originalName: shareDoc.title, size: 0 }} onClose={() => setShareDoc(null)} />}
     </AppShell>
   );
 }

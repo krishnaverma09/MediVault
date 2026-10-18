@@ -4,6 +4,12 @@ const UserRepository = require("../repositories/UserRepository");
 
 class AuthService {
   static async signup({ name, email, password, role }) {
+    name = typeof name === 'string' ? name.trim() : '';
+    email = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    role = role || 'patient';
+    if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || typeof password !== 'string' || password.length < 6 || !['patient', 'doctor'].includes(role)) {
+      throw Object.assign(new Error('Provide a name, valid email, password of at least 6 characters, and valid role'), { statusCode: 400 });
+    }
     const userExists = await UserRepository.findByEmail(email);
 
     if (userExists) {
@@ -32,6 +38,8 @@ class AuthService {
   }
 
   static async login({ email, password }) {
+    email = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (!email || typeof password !== 'string' || !password) throw Object.assign(new Error('Email and password are required'), { statusCode: 400 });
     const user = await UserRepository.findByEmail(email);
 
     if (!user) {

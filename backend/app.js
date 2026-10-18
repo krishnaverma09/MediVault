@@ -46,4 +46,10 @@ app.use("/api/public", publicEmergencyRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  const status = error.code === 'LIMIT_FILE_SIZE' ? 413 : error.statusCode || error.status || 500;
+  res.status(status).json({ success: false, message: error.code === 'LIMIT_FILE_SIZE' ? 'File must be 4 MB or smaller' : error.message || 'Request failed' });
+});
+
 module.exports = app;

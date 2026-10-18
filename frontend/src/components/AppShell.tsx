@@ -32,6 +32,7 @@ export default function AppShell({ user, onLogout, pageTitle, pageSubtitle, chil
       )}
       <div className="app-content">
         <TopBar
+          isDoctor={user.role === "doctor"}
           title={pageTitle}
           subtitle={pageSubtitle}
           onMenuToggle={() => setSidebarOpen(s => !s)}

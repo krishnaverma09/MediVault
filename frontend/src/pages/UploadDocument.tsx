@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import type { User, Doctor } from '../types';
-import { API_URL } from '../config/api';
+import { API_URL, apiFetch } from '../config/api';
 
 export default function UploadDocument() {
   const [user, setUser] = useState<User | null>(null);
@@ -25,7 +25,7 @@ export default function UploadDocument() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const profileRes = await fetch(`${API_URL}/api/user/profile`, {
+      const profileRes = await apiFetch(`${API_URL}/api/user/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const profileData = await profileRes.json().catch(() => ({}));
@@ -34,7 +34,7 @@ export default function UploadDocument() {
       setUser(userData);
 
       if (userData.role !== 'doctor') {
-        const docRes = await fetch(`${API_URL}/api/user/doctors`, {
+        const docRes = await apiFetch(`${API_URL}/api/user/doctors`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const docData = await docRes.json().catch(() => ({}));
@@ -79,6 +79,8 @@ export default function UploadDocument() {
     e.preventDefault();
     if (!file || !title || !documentType) return alert('Please provide the required fields.');
 
+    if (file.size > 4 * 1024 * 1024) return alert('File must be 4 MB or smaller.');
+    if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return alert('Upload a PDF, JPEG, PNG, or WebP file.');
     setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
@@ -93,7 +95,7 @@ export default function UploadDocument() {
     }
 
     try {
-      const res = await fetch(`${API_URL}/api/documents/upload-and-share`, {
+      const res = await apiFetch(`${API_URL}/api/documents/upload-and-share`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -112,6 +114,8 @@ export default function UploadDocument() {
     localStorage.removeItem('medivault_token');
     navigate('/login');
   };
+
+  if (error && !user) return <div className="error-banner" role="alert">{error} <a href="/login">Return to login</a></div>;
 
   if (loading || !user) return <div className="loading-screen">Loading Upload…</div>;
 
@@ -187,7 +191,7 @@ export default function UploadDocument() {
                 <select value={permission} onChange={(e) => setPermission(e.target.value)}>
                   <option value="VIEW">View Only</option>
                   <option value="DOWNLOAD">View + Download</option>
-                  <option value="FULL_ACCESS">Full Access</option>
+
                 </select>
               </div>
 

@@ -49,6 +49,7 @@ class DocumentShareService {
     // Save to Database
     const newDocument = await DocumentRepository.createDocument({
       patientId,
+      size: file.size,
       title,
       description,
       fileUrl: uploadResult.secure_url,
@@ -74,31 +75,56 @@ class DocumentShareService {
   /**
    * Share an existing document manually with selected doctors
    */
-  async shareDocument({ documentId, patientId, doctorIds, permission, expiry }) {
-    const expiresAt = this._calculateExpiry(expiry);
+  async ownedDocument(documentId, patientId) {
+    const mongoose = require('mongoose');
+    if (!mongoose.isValidObjectId(documentId)) throw Object.assign(new Error('Invalid document ID'), { statusCode: 400 });
+    let document = await DocumentRepository.getDocumentById(documentId);
+    if (!document) {
+      const legacy = await require('../models/MedicalRecord').findOne({ _id: documentId, user: patientId });
+      if (legacy) document = await DocumentRepository.createDocument({
+        _id: legacy._id, patientId, title: legacy.originalName, fileUrl: legacy.fileUrl,
+        cloudinaryPublicId: legacy.publicId, fileType: 'application/pdf', documentType: 'Report', size: legacy.size,
+      });
+    }
+    if (!document || String(document.patientId._id || document.patientId) !== String(patientId)) {
+      throw Object.assign(new Error('Document not found'), { statusCode: 404 });
+    }
+    return document;
+  }
 
-    const sharingPayloads = doctorIds.map(doctorId => ({
-      documentId,
-      patientId,
-      doctorId,
-      permission: permission || 'VIEW',
-      expiry: expiry || 'NEVER',
-      expiresAt
-    }));
+  async shareDocument({ documentId, patientId, doctorIds, doctorEmail, permission = 'VIEW', expiry = 'NEVER', expiresAt: customExpiry }) {
+    await this.ownedDocument(documentId, patientId);
+    const User = require('../models/User');
+    if (doctorEmail) {
+      const doctor = await User.findOne({ email: doctorEmail.trim().toLowerCase(), role: 'doctor' });
+      if (!doctor) throw Object.assign(new Error('No doctor account found with that email'), { statusCode: 400 });
+      doctorIds = [String(doctor._id)];
+    }
+    if (!Array.isArray(doctorIds) || !doctorIds.length || !['VIEW', 'DOWNLOAD', 'FULL_ACCESS'].includes(permission) || !['NEVER', '1H', '24H', '7D'].includes(expiry)) {
+      throw Object.assign(new Error('Invalid sharing details'), { statusCode: 400 });
+    }
+    doctorIds = [...new Set(doctorIds.map(String))];
+    const doctors = await User.find({ _id: { $in: doctorIds }, role: 'doctor' });
+    if (doctors.length !== doctorIds.length) throw Object.assign(new Error('Select valid doctor accounts'), { statusCode: 400 });
+    const expiresAt = customExpiry ? new Date(customExpiry) : this._calculateExpiry(expiry);
+    if (expiresAt && (!Number.isFinite(expiresAt.getTime()) || expiresAt <= new Date())) {
+      throw Object.assign(new Error('Expiry must be in the future'), { statusCode: 400 });
+    }
+    const Share = require('../models/DocumentShare');
+    const shares = [];
+    for (const doctorId of doctorIds) {
+      const share = await Share.findOneAndUpdate({ documentId, patientId, doctorId },
+        { permission, expiry, expiresAt }, { upsert: true, new: true, runValidators: true });
+      await DocumentRepository.logAccess({ documentId, doctorId, action: 'SHARE' });
+      shares.push(share);
+    }
+    return shares;
+  }
 
-    await DocumentRepository.createManyShares(sharingPayloads);
-    
-    // Create access logs for sharing action
-    const accessLogs = doctorIds.map(docId => ({
-      documentId,
-      doctorId: docId,
-      action: 'SHARE'
-    }));
-
-    // Optionally: Queue notifications here
-    // notificationService.notifyDoctors(...) 
-    
-    return { message: "Document shared successfully" };
+  async getShares(documentId, patientId) {
+    await this.ownedDocument(documentId, patientId);
+    return require('../models/DocumentShare').find({ documentId, patientId,
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] }).populate('doctorId', 'name email');
   }
 
   /**
@@ -108,7 +134,7 @@ class DocumentShareService {
     const validShares = await DocumentRepository.getSharedWithDoctor(doctorId);
     
     // Map them for nicer frontend formatting
-    return validShares.map(share => ({
+    return validShares.filter(share => share.documentId).map(share => ({
       shareId: share._id,
       document: share.documentId,
       patient: share.patientId,
@@ -121,7 +147,7 @@ class DocumentShareService {
   /**
    * Access a document securely - validates dates and logs the event
    */
-  async viewDocument(shareId, doctorId) {
+  async viewDocument(shareId, doctorId, action = 'VIEW') {
     const shares = await DocumentRepository.getSharedWithDoctor(doctorId);
     const accessGrant = shares.find(s => s._id.toString() === shareId);
     
@@ -129,11 +155,14 @@ class DocumentShareService {
       throw new Error("Access expired or denied");
     }
 
+    if (action === 'DOWNLOAD' && !['DOWNLOAD', 'FULL_ACCESS'].includes(accessGrant.permission)) {
+      throw new Error('Download permission required');
+    }
     // Log the event
     await DocumentRepository.logAccess({
       documentId: accessGrant.documentId._id,
       doctorId,
-      action: 'VIEW' // Check user role permission to download if triggered download
+      action
     });
 
     return accessGrant.documentId; // Return document info
@@ -161,7 +190,8 @@ class DocumentShareService {
   /**
    * Get Access Logs for Patient
    */
-  async getDocumentLogs(documentId) {
+  async getDocumentLogs(documentId, patientId) {
+    await this.ownedDocument(documentId, patientId);
     return await DocumentRepository.getAccessLogs(documentId);
   }
 }

@@ -21,7 +21,7 @@ const bookAppointment = async (req, res) => {
 
     res.status(201).json({ success: true, message: 'Appointment booked successfully.', data: newAppointment });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error booking appointment', error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, message: 'Error booking appointment', error: error.message });
   }
 };
 
@@ -32,7 +32,7 @@ const getPatientAppointments = async (req, res) => {
     
     res.status(200).json({ success: true, data: appointments });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error retrieving appointments', error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, message: 'Error retrieving appointments', error: error.message });
   }
 };
 
@@ -49,7 +49,7 @@ const cancelAppointment = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'Appointment cancelled.', data: cancelledAppointment });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error cancelling appointment', error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, message: 'Error cancelling appointment', error: error.message });
   }
 };
 
@@ -60,7 +60,7 @@ const getDoctorAppointments = async (req, res) => {
     
     res.status(200).json({ success: true, data: appointments });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error retrieving appointments', error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, message: 'Error retrieving appointments', error: error.message });
   }
 };
 
@@ -86,7 +86,7 @@ const updateAppointmentStatus = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid action provided.' });
     }
 
-    const updatedAppointment = await appointmentService.updateAppointmentStatus(id, status, notes);
+    const updatedAppointment = await appointmentService.updateAppointmentStatus(id, req.user.id, status, notes);
 
     if (!updatedAppointment) {
       return res.status(404).json({ success: false, message: 'Appointment not found.' });
@@ -94,7 +94,7 @@ const updateAppointmentStatus = async (req, res) => {
 
     res.status(200).json({ success: true, message: `Appointment ${status.toLowerCase()} successfully.`, data: updatedAppointment });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error updating appointment status', error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, message: 'Error updating appointment status', error: error.message });
   }
 };
 

@@ -115,12 +115,24 @@ class E2EMockApiRouter {
       });
     }
 
+    if (method === 'GET' && pathname === '/api/records/summary') return this.json(route, 200, { activeShares: (this.state.shares || []).length, doctors: (this.state.shares || []).length, consultations: 0 });
     const isPublicEmergency = method === "GET" && pathname.startsWith("/api/public/emergency/");
 
     if (pathname.startsWith("/api/") && !isPublicEmergency && !this.isAuthorized(request)) {
       return this.unauthorized(route);
     }
 
+    if (method === 'GET' && pathname.startsWith('/api/documents/shares/')) return this.json(route, 200, { data: this.state.shares || [] });
+    if (method === 'POST' && pathname === '/api/documents/share') {
+      const body = this.parseJsonBody(request);
+      if (body.doctorEmail !== 'doctor@medivault.test') return this.json(route, 400, { message: 'No doctor account found with that email' });
+      this.state.shares = [{ _id: 'share-e2e', doctorId: { name: 'Doctor E2E', email: body.doctorEmail } }];
+      return this.json(route, 200, { data: this.state.shares });
+    }
+    if (method === 'DELETE' && pathname === '/api/documents/share/share-e2e') {
+      this.state.shares = [];
+      return this.json(route, 200, { success: true });
+    }
     if (method === "GET" && pathname === "/api/user/profile") {
       return this.json(route, 200, this.state.user);
     }

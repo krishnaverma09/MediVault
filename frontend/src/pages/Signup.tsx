@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Stethoscope } from 'lucide-react';
-import { API_URL } from '../config/api';
+import { API_URL, apiFetch } from '../config/api';
 
 export default function Signup() {
   const [name, setName] = useState('');
@@ -17,7 +17,7 @@ export default function Signup() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/auth/signup`, {
+      const res = await apiFetch(`${API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password, role }),

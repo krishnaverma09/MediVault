@@ -5,9 +5,10 @@ interface TopBarProps {
   title: string;
   subtitle?: string;
   onMenuToggle: () => void;
+  isDoctor?: boolean;
 }
 
-export default function TopBar({ title, subtitle, onMenuToggle }: TopBarProps) {
+export default function TopBar({ title, subtitle, onMenuToggle, isDoctor }: TopBarProps) {
   const navigate = useNavigate();
 
   return (
@@ -22,7 +23,7 @@ export default function TopBar({ title, subtitle, onMenuToggle }: TopBarProps) {
         </div>
       </div>
 
-      <div className="topbar-actions">
+      {!isDoctor && <div className="topbar-actions">
         <button
           className="topbar-btn topbar-btn-outline"
           onClick={() => navigate('/documents/upload')}
@@ -32,12 +33,12 @@ export default function TopBar({ title, subtitle, onMenuToggle }: TopBarProps) {
         </button>
         <button
           className="topbar-btn topbar-btn-primary"
-          onClick={() => navigate('/documents/upload')}
+          onClick={() => navigate('/documents')}
         >
           <Share2 size={14} />
           <span>Share with doctor</span>
         </button>
-      </div>
+      </div>}
     </header>
   );
 }

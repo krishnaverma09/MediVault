@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import type { User, Appointment, Doctor } from '../types';
-import { API_URL } from '../config/api';
+import { API_URL, apiFetch } from '../config/api';
 
 function statusBadge(status: string) {
   const map: Record<string, string> = {
@@ -40,7 +40,7 @@ export default function Appointments() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const profileRes = await fetch(`${API_URL}/api/user/profile`, {
+        const profileRes = await apiFetch(`${API_URL}/api/user/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const profileData = await profileRes.json().catch(() => ({}));
@@ -53,7 +53,7 @@ export default function Appointments() {
             ? `${API_URL}/api/appointments/doctor`
             : `${API_URL}/api/appointments/patient`;
 
-        const aptRes = await fetch(endpoint, {
+        const aptRes = await apiFetch(endpoint, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const aptData = await aptRes.json().catch(() => ({}));
@@ -62,7 +62,7 @@ export default function Appointments() {
         }
 
         if (userData.role !== 'doctor') {
-          const docRes = await fetch(`${API_URL}/api/user/doctors`, {
+          const docRes = await apiFetch(`${API_URL}/api/user/doctors`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           const docData = await docRes.json().catch(() => ({}));
@@ -92,7 +92,7 @@ export default function Appointments() {
         user.role === 'doctor'
           ? `${API_URL}/api/appointments/doctor`
           : `${API_URL}/api/appointments/patient`;
-      const aptRes = await fetch(endpoint, {
+      const aptRes = await apiFetch(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const aptData = await aptRes.json().catch(() => ({}));
@@ -109,7 +109,7 @@ export default function Appointments() {
     }
     setBooking(true);
     try {
-      const res = await fetch(`${API_URL}/api/appointments`, {
+      const res = await apiFetch(`${API_URL}/api/appointments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ doctorId, date, time, reason }),
@@ -136,7 +136,7 @@ export default function Appointments() {
       notes = input;
     }
     try {
-      const res = await fetch(`${API_URL}/api/appointments/${id}/${action}`, {
+      const res = await apiFetch(`${API_URL}/api/appointments/${id}/${action}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ notes: notes || '' }),
@@ -152,7 +152,7 @@ export default function Appointments() {
   const cancelAppointment = async (id: string) => {
     if (!window.confirm('Are you sure you want to cancel this appointment?')) return;
     try {
-      const res = await fetch(`${API_URL}/api/appointments/${id}`, {
+      const res = await apiFetch(`${API_URL}/api/appointments/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -168,6 +168,8 @@ export default function Appointments() {
     localStorage.removeItem('medivault_token');
     navigate('/login');
   };
+
+  if (error && !user) return <div className="error-banner" role="alert">{error} <a href="/login">Return to login</a></div>;
 
   if (loading || !user) return <div className="loading-screen">Loading Appointments…</div>;
 

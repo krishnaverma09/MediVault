@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { API_URL } from '../config/api';
+import { useState, useEffect } from 'react';
 import { X, FileText, Copy, Check } from 'lucide-react';
 import type { MedicalRecord } from '../types';
 
@@ -12,7 +13,6 @@ type Permission = 'VIEW' | 'DOWNLOAD' | 'FULL_ACCESS';
 const permLabels: { value: Permission; label: string }[] = [
   { value: 'VIEW',        label: 'View only' },
   { value: 'DOWNLOAD',    label: 'View + download' },
-  { value: 'FULL_ACCESS', label: 'View + annotate' },
 ];
 
 function formatBytes(bytes: number) {
@@ -26,6 +26,7 @@ export default function ShareModal({ record, onClose }: ShareModalProps) {
   const [permission, setPermission] = useState<Permission>('VIEW');
   const [expires, setExpires] = useState('');
   const [sharing, setSharing] = useState(false);
+  const [shares, setShares] = useState<Array<{ _id: string; doctorId: { name: string; email: string } }>>([]);
   const [shareLink, setShareLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
@@ -41,20 +42,17 @@ export default function ShareModal({ record, onClose }: ShareModalProps) {
     setSharing(true);
 
     try {
-      // Use the existing upload-and-share endpoint approach.
-      // Since the record is already uploaded, we generate a shareable link
-      // via the existing documents API.
-      const formData = new FormData();
-      formData.append('title', record.originalName);
-      formData.append('documentType', 'Report');
-      formData.append('permission', permission);
-      if (expires) formData.append('expiry', expires);
-      formData.append('doctorEmail', doctorEmail.trim());
-
-      // Fall back to showing the record's direct URL as the share link
-      setShareLink(record.fileUrl || `${window.location.origin}/records/${record._id}`);
-    } catch {
-      setError('Failed to generate share link. Please try again.');
+      const response = await fetch(`${API_URL}/api/documents/share`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: record._id, doctorEmail: doctorEmail.trim(), permission,
+          expiresAt: expires ? new Date(`${expires}T23:59:59`).toISOString() : undefined }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Sharing failed');
+      await loadShares();
+      setShareLink(`${window.location.origin}/documents`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sharing failed');
     } finally {
       setSharing(false);
     }
@@ -70,9 +68,29 @@ export default function ShareModal({ record, onClose }: ShareModalProps) {
     }
   };
 
-  const handleRevoke = async () => {
-    setShareLink('');
-    setDoctorEmail('');
+  async function loadShares() {
+    const response = await fetch(`${API_URL}/api/documents/shares/${record._id}`, { headers: { Authorization: `Bearer ${token}` } });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'Unable to load shares');
+    setShares(result.data || []);
+  }
+
+  useEffect(() => {
+    let active = true;
+    fetch(`${API_URL}/api/documents/shares/${record._id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.message); return result.data; })
+      .then(data => { if (active) setShares(data || []); })
+      .catch(err => { if (active) setError(err.message || 'Unable to load shares'); });
+    return () => { active = false; };
+  }, [record._id, token]);
+
+  const revokeShare = async (id: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/documents/share/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error('Unable to revoke access');
+      await loadShares();
+      setShareLink('');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Revocation failed'); }
   };
 
   const fileName = record.originalName;
@@ -171,6 +189,12 @@ export default function ShareModal({ record, onClose }: ShareModalProps) {
             </div>
           )}
 
+          {shares.length > 0 && <div><strong>Doctors with access</strong>{shares.map(share => (
+            <div key={share._id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 8 }}>
+              <span>{share.doctorId?.name} ({share.doctorId?.email})</span>
+              <button className="btn-link" onClick={() => revokeShare(share._id)}>Revoke access</button>
+            </div>
+          ))}</div>}
           {/* Doctor email */}
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
@@ -226,6 +250,7 @@ export default function ShareModal({ record, onClose }: ShareModalProps) {
             </label>
             <input
               type="date"
+              min={new Date().toLocaleDateString("en-CA")}
               value={expires}
               onChange={e => setExpires(e.target.value)}
               style={{
@@ -303,18 +328,6 @@ export default function ShareModal({ record, onClose }: ShareModalProps) {
           >
             Cancel
           </button>
-          {shareLink && (
-            <button
-              onClick={handleRevoke}
-              style={{
-                padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                background: 'var(--red-50)', border: '0.5px solid var(--red-200)',
-                color: 'var(--red)', cursor: 'pointer', fontFamily: 'var(--font)',
-              }}
-            >
-              Revoke link
-            </button>
-          )}
           <button
             onClick={handleShare}
             disabled={sharing}

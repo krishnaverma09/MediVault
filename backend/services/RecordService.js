@@ -58,11 +58,26 @@ class RecordService {
   }
 
   static async getRecords(user) {
+    const DocumentRepository = require('../repositories/DocumentRepository');
+    const toRecord = (doc, patient) => ({
+      _id: doc._id, originalName: doc.title, fileName: doc.title,
+      fileUrl: doc.fileUrl, size: doc.size || 0, createdAt: doc.createdAt,
+      user: patient, fileType: doc.fileType,
+    });
     if (user.role === 'doctor') {
-      return await MedicalRecordRepository.findAll();
-    } else {
-      return await MedicalRecordRepository.findByUserId(user.id);
+      const shares = await DocumentRepository.getSharedWithDoctor(user.id);
+      const unique = new Map();
+      for (const share of shares) if (share.documentId) {
+        unique.set(String(share.documentId._id), { ...toRecord(share.documentId, share.patientId), shareId: share._id });
+      }
+      return [...unique.values()];
     }
+    const [records, documents] = await Promise.all([
+      MedicalRecordRepository.findByUserId(user.id), DocumentRepository.getPatientDocuments(user.id),
+    ]);
+    const documentIds = new Set(documents.map(doc => String(doc._id)));
+    return [...records.filter(record => !documentIds.has(String(record._id))), ...documents.map(doc => toRecord(doc))]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 }
 

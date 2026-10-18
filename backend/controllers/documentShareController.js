@@ -38,33 +38,34 @@ class DocumentShareController {
         data: newDoc
       });
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      res.status(error.statusCode || 500).json({ success: false, message: error.message });
     }
   }
 
   static async shareLater(req, res) {
     try {
       const patientId = req.user.id;
-      const { documentId, doctorIds, permission, expiry } = req.body;
+      const { documentId, doctorIds, doctorEmail, permission, expiry, expiresAt } = req.body;
 
-      if (!documentId || !doctorIds || !doctorIds.length) {
+      if (!documentId || (!doctorEmail && (!Array.isArray(doctorIds) || !doctorIds.length))) {
         return res.status(400).json({ success: false, message: "Missing required sharing details." });
       }
 
-      await DocumentShareService.shareDocument({
+      const shares = await DocumentShareService.shareDocument({
         documentId,
         patientId,
-        doctorIds,
+        doctorIds, doctorEmail,
         permission,
-        expiry
+        expiry, expiresAt
       });
 
       res.status(200).json({
         success: true,
-        message: "Document shared successfully with selected doctors"
+        message: "Document shared successfully with selected doctors",
+        data: shares
       });
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      res.status(error.statusCode || 500).json({ success: false, message: error.message });
     }
   }
 
@@ -84,7 +85,7 @@ class DocumentShareController {
         data: sharedDocs
       });
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      res.status(error.statusCode || 500).json({ success: false, message: error.message });
     }
   }
 
@@ -93,7 +94,7 @@ class DocumentShareController {
       const doctorId = req.user.id;
       const { shareId } = req.params;
 
-      const documentData = await DocumentShareService.viewDocument(shareId, doctorId);
+      const documentData = await DocumentShareService.viewDocument(shareId, doctorId, req.query.download === 'true' ? 'DOWNLOAD' : 'VIEW');
 
       // We just return document details (URL) assuming frontend handles rendering/downloading
       res.status(200).json({
@@ -121,21 +122,29 @@ class DocumentShareController {
         message: "Doctor access revoked successfully."
       });
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      res.status(error.statusCode || 500).json({ success: false, message: error.message });
     }
   }
 
   static async getAccessLogs(req, res) {
     try {
       const { documentId } = req.params;
-      const logs = await DocumentShareService.getDocumentLogs(documentId);
+      const logs = await DocumentShareService.getDocumentLogs(documentId, req.user.id);
 
       res.status(200).json({
         success: true,
         data: logs
       });
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      res.status(error.statusCode || 500).json({ success: false, message: error.message });
+    }
+  }
+
+  static async getShares(req, res) {
+    try {
+      res.json({ success: true, data: await DocumentShareService.getShares(req.params.documentId, req.user.id) });
+    } catch (error) {
+      res.status(error.statusCode || 500).json({ success: false, message: error.message });
     }
   }
 
@@ -150,7 +159,7 @@ class DocumentShareController {
         data: docs
       });
     } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+      res.status(error.statusCode || 500).json({ success: false, message: error.message });
     }
   }
 }

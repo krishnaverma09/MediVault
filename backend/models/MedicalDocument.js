@@ -11,6 +11,7 @@ const DocumentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    size: { type: Number, default: 0 },
     description: {
       type: String,
     },

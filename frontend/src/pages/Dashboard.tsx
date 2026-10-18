@@ -9,7 +9,7 @@ import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import EmptyState from '../components/ui/EmptyState';
 import Badge from '../components/ui/Badge';
 import type { User, MedicalRecord } from '../types';
-import { API_URL } from '../config/api';
+import { API_URL, apiFetch } from '../config/api';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -80,7 +80,7 @@ function DoctorDashboard({ user, records, loading }: { user: User; records: Medi
       <div style={{ display: 'grid', gap: 14, marginBottom: 20 }} className="stats-grid">
         <StatCard label="Shared with me" value={records.length} sub="Documents" />
         <StatCard label="Patients" value={new Set(records.map(r => r.user?.name)).size} sub="Active" />
-        <StatCard label="My role" value="Doctor" sub="Verified" subGreen />
+        <StatCard label="My role" value="Doctor" sub="Doctor account" subGreen />
         <StatCard label="Account status" value="Active" sub="All systems OK" subGreen />
       </div>
 
@@ -122,7 +122,7 @@ function DoctorDashboard({ user, records, loading }: { user: User; records: Medi
                   </div>
                 </div>
                 <Badge variant={cfg.badge} label={cfg.label} />
-                <a href={record.fileUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--blue)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>View</a>
+                <Link to="/documents" style={{ color: 'var(--blue)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>View</Link>
               </div>
             );
           })
@@ -140,6 +140,7 @@ export default function Dashboard() {
   const [emergency, setEmergency] = useState<EmergencyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [summary, setSummary] = useState({ activeShares: 0, doctors: 0, consultations: 0 });
   const [shareRecord, setShareRecord] = useState<MedicalRecord | null>(null);
 
   const navigate = useNavigate();
@@ -148,7 +149,7 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const profileRes = await fetch(`${API_URL}/api/user/profile`, {
+        const profileRes = await apiFetch(`${API_URL}/api/user/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const profileData = await profileRes.json().catch(() => ({}));
@@ -156,7 +157,7 @@ export default function Dashboard() {
         const userData: User = profileData.user || profileData.data || profileData;
         setUser(userData);
 
-        const recordsRes = await fetch(`${API_URL}/api/records`, {
+        const recordsRes = await apiFetch(`${API_URL}/api/records`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const recordsData = await recordsRes.json().catch(() => ({}));
@@ -164,7 +165,9 @@ export default function Dashboard() {
 
         // Fetch emergency profile for patient
         if (userData.role !== 'doctor') {
-          const emergRes = await fetch(`${API_URL}/api/emergency/me`, {
+          const summaryRes = await apiFetch(`${API_URL}/api/records/summary`, { headers: { Authorization: `Bearer ${token}` } });
+          if (summaryRes.ok) setSummary(await summaryRes.json());
+          const emergRes = await apiFetch(`${API_URL}/api/emergency/me`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (emergRes.ok) {
@@ -193,6 +196,8 @@ export default function Dashboard() {
     navigate('/login');
   };
 
+  if (error && !user) return <div className="error-banner" role="alert">{error} <a href="/login">Return to login</a></div>;
+
   if (!user) {
     return <div className="loading-screen">Loading MediVault…</div>;
   }
@@ -216,6 +221,7 @@ export default function Dashboard() {
             records={records}
             emergency={emergency}
             loading={loading}
+            summary={summary}
             onShareRecord={setShareRecord}
           />
         )}
@@ -235,11 +241,13 @@ function PatientDashboard({
   emergency,
   loading,
   onShareRecord,
+  summary,
 }: {
   records: MedicalRecord[];
   emergency: EmergencyProfile | null;
   loading: boolean;
   onShareRecord: (r: MedicalRecord) => void;
+  summary: { activeShares: number; doctors: number; consultations: number };
 }) {
   const emergencyActive = emergency?.emergencyAccessEnabled;
   const ep = emergency?.emergencyProfile;
@@ -279,7 +287,7 @@ function PatientDashboard({
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 10, color: 'var(--text-muted)', textAlign: 'center',
           }}>
-            QR
+            <Link to="/emergency-access">View QR</Link>
           </div>
         </div>
       )}
@@ -287,9 +295,9 @@ function PatientDashboard({
       {/* Stats */}
       <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
         <StatCard label="Total records" value={records.length} sub="Medical files" />
-        <StatCard label="Active share links" value="—" sub="Shared documents" />
-        <StatCard label="Doctors with access" value="—" sub="Current access" />
-        <StatCard label="Consultations" value="—" sub="Appointments" />
+        <StatCard label="Active share links" value={summary.activeShares} sub="Shared documents" />
+        <StatCard label="Doctors with access" value={summary.doctors} sub="Current access" />
+        <StatCard label="Consultations" value={summary.consultations} sub="Appointments" />
       </div>
 
       {/* Recent Records */}

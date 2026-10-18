@@ -1,6 +1,16 @@
 const RecordService = require("../services/RecordService");
 
 class RecordController {
+  static async getSummary(req, res) {
+    try {
+      const Share = require('../models/DocumentShare');
+      const Appointment = require('../models/Appointment');
+      const shares = await Share.find({ patientId: req.user.id, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] }).lean();
+      const consultations = await Appointment.countDocuments({ patientId: req.user.id, status: { $ne: 'Cancelled' } });
+      res.json({ activeShares: shares.length, doctors: new Set(shares.map(share => String(share.doctorId))).size, consultations });
+    } catch (error) { res.status(500).json({ message: error.message }); }
+  }
+
   static async upload(req, res) {
     try {
       const record = await RecordService.uploadMedicalRecord(req.user.id, req.file);

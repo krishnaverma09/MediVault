@@ -14,7 +14,7 @@ import type {
   VitalLog,
   VitalsFormValues,
 } from '../types';
-import { API_BASE } from '../config/api';
+import { API_BASE, apiFetch } from '../config/api';
 
 function todayIsoDate() {
   return new Date().toISOString().split('T')[0];
@@ -202,16 +202,16 @@ export default function HealthAnalytics() {
 
     try {
       const [profileRes, dashboardRes, summaryRes, logsRes] = await Promise.all([
-        fetch(`${API_BASE}/api/user/profile`, {
+        apiFetch(`${API_BASE}/api/user/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${API_BASE}/api/analytics/dashboard`, {
+        apiFetch(`${API_BASE}/api/analytics/dashboard`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${API_BASE}/api/analytics/summary`, {
+        apiFetch(`${API_BASE}/api/analytics/summary`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${API_BASE}/api/analytics/vitals`, {
+        apiFetch(`${API_BASE}/api/analytics/vitals`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -303,7 +303,7 @@ export default function HealthAnalytics() {
         : `${API_BASE}/api/analytics/vitals`;
       const method = editingId ? 'PUT' : 'POST';
 
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -342,7 +342,7 @@ export default function HealthAnalytics() {
     setSuccess('');
 
     try {
-      const response = await fetch(`${API_BASE}/api/analytics/vitals/${id}`, {
+      const response = await apiFetch(`${API_BASE}/api/analytics/vitals/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,

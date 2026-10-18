@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import type { EmergencyProfileData } from '../types';
-import { API_BASE } from '../config/api';
+import { API_BASE, apiFetch } from '../config/api';
 
 function joinValues(values: string[]) {
   return values.length ? values.join(', ') : 'Not provided';
@@ -39,7 +39,7 @@ export default function PublicEmergencyProfile() {
       }
 
       try {
-        const response = await fetch(`${API_BASE}/api/public/emergency/${token}`);
+        const response = await apiFetch(`${API_BASE}/api/public/emergency/${token}`);
         const payload = await response.json();
         if (!response.ok) {
           throw new Error(payload.message || 'Emergency profile not available.');

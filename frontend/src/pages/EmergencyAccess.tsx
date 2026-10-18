@@ -4,7 +4,7 @@ import AppShell from '../components/AppShell';
 import EmergencyProfileForm from '../components/EmergencyProfileForm';
 import EmergencyQRCodeCard from '../components/EmergencyQRCodeCard';
 import type { EmergencyPrivateData, EmergencyProfileData, User } from '../types';
-import { API_BASE } from '../config/api';
+import { API_BASE, apiFetch } from '../config/api';
 
 const EMPTY_PROFILE: EmergencyProfileData = {
   fullName: '',
@@ -67,7 +67,7 @@ export default function EmergencyAccess() {
   const fetchQrCode = useCallback(async () => {
     setGeneratingQr(true);
     try {
-      const response = await fetch(`${API_BASE}/api/emergency/qr`, {
+      const response = await apiFetch(`${API_BASE}/api/emergency/qr`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -93,12 +93,12 @@ export default function EmergencyAccess() {
 
     try {
       const [profileRes, emergencyRes] = await Promise.all([
-        fetch(`${API_BASE}/api/user/profile`, {
+        apiFetch(`${API_BASE}/api/user/profile`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }),
-        fetch(`${API_BASE}/api/emergency/me`, {
+        apiFetch(`${API_BASE}/api/emergency/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -151,7 +151,7 @@ export default function EmergencyAccess() {
     setSuccess('');
 
     try {
-      const response = await fetch(`${API_BASE}/api/emergency/setup`, {
+      const response = await apiFetch(`${API_BASE}/api/emergency/setup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -184,7 +184,7 @@ export default function EmergencyAccess() {
     setSuccess('');
 
     try {
-      const response = await fetch(`${API_BASE}/api/emergency/toggle`, {
+      const response = await apiFetch(`${API_BASE}/api/emergency/toggle`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -221,7 +221,7 @@ export default function EmergencyAccess() {
     setSuccess('');
 
     try {
-      const response = await fetch(`${API_BASE}/api/emergency/regenerate`, {
+      const response = await apiFetch(`${API_BASE}/api/emergency/regenerate`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,

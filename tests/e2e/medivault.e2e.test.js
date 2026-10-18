@@ -83,6 +83,22 @@ test.describe("MediVault E2E", () => {
     await expect(page.getByText("Public access is currently")).toContainText("enabled");
   });
 
+  test('Shares a record, restores saved grants and revokes access', async ({ page }) => {
+    await new LoginPage(page).login('patient@medivault.test', 'Password123!');
+    await page.getByRole('button', { name: 'Share this record' }).first().click();
+    await page.getByPlaceholder('doctor@hospital.com').fill('missing@example.test');
+    await page.getByRole('button', { name: 'Send to doctor' }).click();
+    await expect(page.getByText('No doctor account found with that email')).toBeVisible();
+    await page.getByPlaceholder('doctor@hospital.com').fill('doctor@medivault.test');
+    await page.getByRole('button', { name: 'Send to doctor' }).click();
+    await expect(page.locator('strong').filter({ hasText: 'Doctors with access' })).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page.getByRole('button', { name: 'Share this record' }).first().click();
+    await expect(page.getByText('Doctor E2E (doctor@medivault.test)')).toBeVisible();
+    await page.getByRole('button', { name: 'Revoke access' }).click();
+    await expect(page.locator('strong').filter({ hasText: 'Doctors with access' })).not.toBeVisible();
+  });
+
   test("Logout", async ({ page }) => {
     const loginPage = new LoginPage(page);
     const dashboardPage = new DashboardPage(page);
