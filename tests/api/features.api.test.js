@@ -42,6 +42,8 @@ describe('Complete feature regressions', function () {
       expect(upload.status).to.equal(201);
       doc = upload.body.data;
     } finally { DocumentShareService.uploadFileToCloudinary = original; }
+    expect((await api.get(`/api/documents/patient/view/${doc._id}`).set(header(patient))).status).to.equal(200);
+    expect((await api.get(`/api/documents/patient/view/${doc._id}`).set(header(otherPatient))).status).to.equal(404);
     const records = await api.get('/api/records').set(header(patient));
     expect(records.body.data.map(r => r._id)).to.include(doc._id);
     expect((await api.get('/api/records').set(header(doctor))).body.data).to.have.length(0);

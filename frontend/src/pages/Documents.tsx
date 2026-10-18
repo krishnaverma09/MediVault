@@ -74,6 +74,15 @@ export default function Documents() {
     }
   };
 
+  const viewPatientDoc = async (documentId: string) => {
+    try {
+      const response = await apiFetch(`${API_URL}/api/documents/patient/view/${documentId}`, { headers: { Authorization: `Bearer ${token}` } });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Unable to open document');
+      window.open(result.data.fileUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Unable to open document'); }
+  };
+
   const downloadDoc = async (shareId: string) => {
     await viewDoctorDoc(shareId, true);
   };
@@ -120,14 +129,7 @@ export default function Documents() {
                         <span>Uploaded {new Date(doc.createdAt).toLocaleString()}</span>
                       </div>
                       <button className="btn-link" onClick={() => setShareDoc(doc)}>Share / Manage access</button>
-                      <a
-                        href={doc.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="btn-link"
-                      >
-                        View
-                      </a>
+                      <button onClick={() => viewPatientDoc(doc._id)} className="btn-link">View</button>
                     </li>
                   ))}
                 </ul>

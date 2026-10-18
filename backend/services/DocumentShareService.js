@@ -136,7 +136,7 @@ class DocumentShareService {
     // Map them for nicer frontend formatting
     return validShares.filter(share => share.documentId).map(share => ({
       shareId: share._id,
-      document: share.documentId,
+      document: require('../utils/fileDelivery')(share.documentId),
       patient: share.patientId,
       permission: share.permission,
       expiresAt: share.expiresAt,

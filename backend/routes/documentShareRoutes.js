@@ -29,4 +29,6 @@ router.get("/access-logs/:documentId", protect, authorize("patient"), DocumentSh
 
 router.get("/shares/:documentId", protect, authorize("patient"), DocumentShareController.getShares);
 
+router.get("/patient/view/:documentId", protect, authorize("patient"), DocumentShareController.viewPatientDocument);
+
 module.exports = router;

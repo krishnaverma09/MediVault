@@ -1,3 +1,4 @@
+const fileDelivery = require('../utils/fileDelivery');
 const DocumentShareService = require("../services/DocumentShareService");
 
 class DocumentShareController {
@@ -35,7 +36,7 @@ class DocumentShareController {
       res.status(201).json({
         success: true,
         message: "Document uploaded and shared successfully",
-        data: newDoc
+        data: fileDelivery(newDoc)
       });
     } catch (error) {
       res.status(error.statusCode || 500).json({ success: false, message: error.message });
@@ -99,7 +100,7 @@ class DocumentShareController {
       // We just return document details (URL) assuming frontend handles rendering/downloading
       res.status(200).json({
         success: true,
-        data: documentData
+        data: fileDelivery(documentData)
       });
     } catch (error) {
       res.status(403).json({ success: false, message: error.message });
@@ -140,6 +141,15 @@ class DocumentShareController {
     }
   }
 
+  static async viewPatientDocument(req, res) {
+    try {
+      const document = await DocumentShareService.ownedDocument(req.params.documentId, req.user.id);
+      res.json({ success: true, data: fileDelivery(document) });
+    } catch (error) {
+      res.status(error.statusCode || 500).json({ success: false, message: error.message });
+    }
+  }
+
   static async getShares(req, res) {
     try {
       res.json({ success: true, data: await DocumentShareService.getShares(req.params.documentId, req.user.id) });
@@ -156,7 +166,7 @@ class DocumentShareController {
       
       res.status(200).json({
         success: true,
-        data: docs
+        data: docs.map(fileDelivery)
       });
     } catch (error) {
       res.status(error.statusCode || 500).json({ success: false, message: error.message });

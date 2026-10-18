@@ -14,7 +14,7 @@ class RecordController {
   static async upload(req, res) {
     try {
       const record = await RecordService.uploadMedicalRecord(req.user.id, req.file);
-      res.status(201).json({ message: "Upload successful", record });
+      res.status(201).json({ message: "Upload successful", record: require("../utils/fileDelivery")(record) });
     } catch (error) {
       res.status(error.statusCode || 500).json({ message: error.message });
     }

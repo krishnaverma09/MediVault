@@ -40,6 +40,8 @@ class RecordService {
               _id: record._id,
               fileName: record.fileName,
               fileUrl: record.fileUrl,
+              publicId: record.publicId,
+              originalName: record.originalName,
               createdAt: record.createdAt
             });
 
@@ -61,7 +63,7 @@ class RecordService {
     const DocumentRepository = require('../repositories/DocumentRepository');
     const toRecord = (doc, patient) => ({
       _id: doc._id, originalName: doc.title, fileName: doc.title,
-      fileUrl: doc.fileUrl, size: doc.size || 0, createdAt: doc.createdAt,
+      fileUrl: require('../utils/fileDelivery')(doc).fileUrl, size: doc.size || 0, createdAt: doc.createdAt,
       user: patient, fileType: doc.fileType,
     });
     if (user.role === 'doctor') {
@@ -76,7 +78,7 @@ class RecordService {
       MedicalRecordRepository.findByUserId(user.id), DocumentRepository.getPatientDocuments(user.id),
     ]);
     const documentIds = new Set(documents.map(doc => String(doc._id)));
-    return [...records.filter(record => !documentIds.has(String(record._id))), ...documents.map(doc => toRecord(doc))]
+    return [...records.filter(record => !documentIds.has(String(record._id))).map(require('../utils/fileDelivery')), ...documents.map(doc => toRecord(doc))]
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 }
