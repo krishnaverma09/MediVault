@@ -17,15 +17,20 @@ const analyticsRoutes = require("./routes/analyticsRoutes");
 const app = express();
 const connectDB = require("./config/db");
 
-if (process.env.NODE_ENV !== "test") {
-  (async () => {
-    await connectDB();
-  })();
-}
-
 // Core middleware
+app.set("trust proxy", 1);
 app.use(cors());
 app.use(express.json());
+
+app.use("/api", async (req, res, next) => {
+  if (process.env.NODE_ENV === "test") return next();
+  try {
+    await connectDB();
+    next();
+  } catch {
+    res.status(503).json({ message: "Database temporarily unavailable" });
+  }
+});
 
 app.get("/", (req, res) => {
   res.send("MediVault API Running");

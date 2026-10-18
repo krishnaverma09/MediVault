@@ -1,16 +1,19 @@
 const mongoose = require("mongoose");
 
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      tlsAllowInvalidCertificates: true,
-    });
+let connectionPromise;
 
-    console.log(`MongoDB Connected`);
-  } catch (error) {
-    console.error(error);
-    process.exit(1);
+const connectDB = async () => {
+  if (mongoose.connection.readyState === 1) return mongoose.connection;
+  if (!connectionPromise) {
+    connectionPromise = mongoose.connect(process.env.MONGO_URI, {
+      tlsAllowInvalidCertificates: true,
+      serverSelectionTimeoutMS: 10000,
+    }).catch((error) => {
+      connectionPromise = undefined;
+      throw error;
+    });
   }
+  return connectionPromise;
 };
 
 module.exports = connectDB;
